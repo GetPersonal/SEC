@@ -2,11 +2,11 @@ import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
-public class simpleS implements Runnable {
+public class Server implements Runnable {
   
 Socket ss;
    
-    simpleS(Socket csocket) {
+    Server(Socket csocket) {
       this.ss = csocket;
    }
    
@@ -19,7 +19,7 @@ Socket ss;
       while(true){
 	Socket sss=s1.accept();       //aceita ligação cliente
 	System.out.println("Connected" );
-	new Thread(new simpleS(sss)).start();
+	new Thread(new Server(sss)).start();
       }
    }  
     
