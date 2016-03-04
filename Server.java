@@ -72,25 +72,7 @@ Socket ss;
             
             System.out.println(res);
          p.println(res);   //envia para cli
-         
-         
-		/*//ESCREVE NO FICHEIRO (cria/continua à frente)
-		FileOutputStream outputStream = new FileOutputStream("MyFile.txt", true);
-		OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
-		BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);            
-		bufferedWriter.write(res + '\n');
-		bufferedWriter.close();*/
-		
-		
-		/*//LÊ O FICHEIRO
-		FileReader reader = new FileReader("MyFile.txt");
-		BufferedReader bufferedReader = new BufferedReader(reader);
-		while ((line = bufferedReader.readLine()) != null) {
-			System.out.println(line);
-		}
-		reader.close();*/
-		
-		
+        
 	}		
 	sc.close();
 	p.close();
