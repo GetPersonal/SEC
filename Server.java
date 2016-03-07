@@ -10,6 +10,30 @@ Socket ss;
       this.ss = csocket;
    }
    
+   
+  public String get (String id)throws IOException{
+  
+    if (new File("Block.txt").exists() ){      //VÊ SE O FICHEIRO EXISTE
+      FileReader reader = new FileReader("Block.txt");
+      BufferedReader bufferedReader = new BufferedReader(reader);
+      String line="";
+      String[] block;
+      while ((line = bufferedReader.readLine()) != null) { //LÊ O FICHEIRO
+	block=line.split("\\|");
+	if (block[0].equals(id)){
+	  reader.close();
+	  return block[1] + '\n';
+	}
+      }
+      reader.close();
+      return "Utilizador nao existe";
+    
+    }else{return "Nao existe ficheiro de bloco de dados";}
+      
+  
+  } 
+   
+   
   public static void main (String args[]) throws IOException{
 
     String msg="", res;
@@ -31,7 +55,7 @@ Socket ss;
       try {
 	Scanner sc=new Scanner(ss.getInputStream()).useDelimiter("\n"); //aceita input
 	PrintStream p= new PrintStream(ss.getOutputStream()); //envia output
-	String msg="", res, line;
+	String msg="", res;
 	String[] cmd;
 	while( !msg.equals("-1")){
 	  
@@ -43,7 +67,7 @@ Socket ss;
 	  }
     
 	
-	    cmd =msg.split("\\(");
+	    cmd =msg.split("\\(|\\)");
 	    switch (cmd[0]) {
 		case "write":  
 			//ESCREVE NO FICHEIRO (cria/continua à frente)
@@ -55,18 +79,7 @@ Socket ss;
 			break;
 			
 		case "read":  
-			if (! new File("MyFile.txt").exists() ){      //VÊ SE O FICHEIRO EXISTE
-			    System.out.println("Nao existe ficheiro");
-			    break;
-			}
-			//LÊ O FICHEIRO
-			FileReader reader = new FileReader("MyFile.txt");
-			BufferedReader bufferedReader = new BufferedReader(reader);
-			res="";
-			while ((line = bufferedReader.readLine()) != null) {
-				res=res+line+'\n';
-			}
-			reader.close();
+			res=get(cmd[1]);
 			break;
             }    
             
