@@ -6,6 +6,8 @@ import java.util.Scanner;
 
 
 public class App{
+
+private static String Id;
   
     public static void main (String args[]) throws IOException{
     String input="",res, PrivKey;
@@ -18,7 +20,8 @@ public class App{
       System.out.println("Welcome! Please start with the FS_init() command");
       input=sc.next();          //msg do user
       if(input.equals("FS_init()")){
-	  System.out.println("H(KEY): "+ c.FS_init());
+	  Id=c.FS_init();
+	  System.out.println("H(KEY): "+ Id);
 	  System.out.print("Secure communication started!");
 	  break;
 	      }
@@ -27,7 +30,7 @@ public class App{
     if(!input.equals("exit")){
     
 	while(true){
-		System.out.println("Wainting for your command...");
+		System.out.println("Waiting for your command...");
 		input=sc.next();          //msg do user    
 		if(input.equals("exit")){
 			c.exit();
@@ -37,9 +40,10 @@ public class App{
 			arg =cmd[1].split("\\,");
 			switch (cmd[0]) {			  
 			    case "FS_write":
-				    if(arg.length==2){
+				    if(arg.length==3){
 				    //CHAMAR FS_write
-				    c.FS_write(arg[0],arg[1]);
+				    System.out.println(" of arguments"+arg[2]);
+				    c.FS_write(arg[0],arg[1],arg[2]);
 				    }else{System.out.println("Wrong number of arguments, please try again");}
 				    break;					
 			    case "FS_read":
