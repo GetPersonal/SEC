@@ -28,6 +28,23 @@ String userKey;
       while ((line = bufferedReader.readLine()) != null) { //LÊ O FICHEIRO
 	block=line.split("\\|");
 	if (block[0].equals(id)){
+	  try{
+	    //generate key from text
+	    byte[] decodedKey = Base64.getDecoder().decode(block[3]); //plain publick
+	    X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
+	    KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+	    PublicKey pubKey = keyFactory.generatePublic(keySpec);
+	    //CHECK SIGNATURE
+	    String OriginalData = Base64.getEncoder().encodeToString(pubKey.getEncoded());
+	    Signature sig = Signature.getInstance("SHA1withRSA");
+	    sig.initVerify(pubKey);
+	    byte[] BytesSign= Base64.getDecoder().decode(block[2]);
+	    sig.update(block[1].getBytes());
+	    boolean isValid = sig.verify(BytesSign);
+	    if(!isValid){return "Wrong Signature, Files Corrupt!";}
+	  }catch(NoSuchAlgorithmException|SignatureException|InvalidKeyException|InvalidKeySpecException e){
+	      System.out.println(e);
+	  }
 	  reader.close();
 	  return line;
 	}
