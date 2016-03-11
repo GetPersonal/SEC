@@ -39,7 +39,6 @@ public class Client{
 	    instance.update(data.getBytes());
 	    byte[] signature = instance.sign();
 	    String PlainSign = Base64.getEncoder().encodeToString(signature);
-	    System.out.println("sIGN: "+ PlainSign);
 	  this.Sout.println("put_k("+data+","+PlainSign+","+this.Kpub64+")");
       }else{
 	    String [] block= res.split("\\|");
