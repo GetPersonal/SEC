@@ -111,8 +111,6 @@ String userKey;
    
   public static void main (String args[]) throws IOException{
 
-    String msg="", res;
-    
       ServerSocket s1= new ServerSocket(1342);
       System.out.println("Listening");
       while(true){

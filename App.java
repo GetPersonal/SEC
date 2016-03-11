@@ -1,5 +1,5 @@
 
-import ClientPack.*;
+import Pack.*;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
@@ -21,7 +21,7 @@ private static String Id;
       input=sc.next();          //msg do user
       if(input.equals("FS_init()")){
 	  Id=c.FS_init();
-	  System.out.println("H(KEY): "+ Id);
+	  System.out.println("Your ID: "+ Id);
 	  System.out.print("Secure communication started!");
 	  break;
 	      }
@@ -41,14 +41,11 @@ private static String Id;
 			switch (cmd[0]) {			  
 			    case "FS_write":
 				    if(arg.length==3){
-				    //CHAMAR FS_write
-				    System.out.println(" of arguments"+arg[2]);
 				    c.FS_write(arg[0],arg[1],arg[2]);
 				    }else{System.out.println("Wrong number of arguments, please try again");}
 				    break;					
 			    case "FS_read":
 				    if(arg.length==3){
-				    //CHAMAR FS_read
 				    System.out.println(c.FS_read(arg[0],arg[1], arg[2]));
 				    }else{System.out.println("Wrong number of arguments, please try again");}
 				    break;
