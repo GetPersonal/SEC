@@ -1,4 +1,4 @@
-package ClientPack;
+package Pack;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
@@ -13,7 +13,16 @@ public class Client{
   PrivateKey Kpriv;
   PrintStream Sout;
   Scanner  Sin;
-  
+   public PrintStream getStreamout (){
+	return this.Sout;
+	
+   }   
+   
+   public Scanner getStreamin (){
+	return this.Sin;
+	
+   }
+   
    
     public void exit (){
 	this.Sout.println("exit");
@@ -25,11 +34,12 @@ public class Client{
       	try{ 
             Signature instance = Signature.getInstance("SHA1withRSA");
 	    instance.initSign(this.Kpriv);
-      if(res.equals("There is no file from that user!")||res.equals("Server file doesn't exist!")){;
+      if(res.equals("There is no file from that user!")||res.equals("Server file doesn't exist!")){
 	    //Assinatura
 	    instance.update(data.getBytes());
 	    byte[] signature = instance.sign();
 	    String PlainSign = Base64.getEncoder().encodeToString(signature);
+	    System.out.println("sIGN: "+ PlainSign);
 	  this.Sout.println("put_k("+data+","+PlainSign+","+this.Kpub64+")");
       }else{
 	    String [] block= res.split("\\|");
@@ -42,15 +52,13 @@ public class Client{
 	    }else{ bufferSize = text.length;}
 	    
 	    byte[] aux = new byte[bufferSize];
-	    Arrays.fill( aux, (byte) 0 );
+	    Arrays.fill( aux, (byte) ' ' );
 	    while( i< bufferSize ){
 		  if(i>=Integer.parseInt(pos) && j<Integer.parseInt(size)){
-		    System.out.println("novo "+i);
 		    aux[i]=newtext[j];
 		    j++;
 		  }else{
 		    if(i<text.length){
-			System.out.println("velho "+i);
 			aux[i]=text[i];
 		    }
 		  }
@@ -64,16 +72,19 @@ public class Client{
 	    String PlainSign = Base64.getEncoder().encodeToString(signature);
 	    this.Sout.println("put_k("+result+","+PlainSign+","+this.Kpub64+")");
       }
-      System.out.println( "With "+ this.Sin.next());
+      
+      String resID= this.Sin.next();
+      if(!resID.equals(this.Id)){System.out.println("Server with wrong ID for my file!");}
 	  
 }catch(SignatureException|UnsupportedEncodingException|InvalidKeyException|NoSuchAlgorithmException e){ System.out.println(e);}
 
    }
    
    public String FS_read (String id, String pos, String size){
-	this.Sout.println("get("+id+")");         //envia
-	
-	String [] block= (this.Sin.next()).split("\\|");
+    this.Sout.println("get("+id+")");         //envia
+    String res= this.Sin.next();
+    if(!(res.equals("There is no file from that user!")||res.equals("Wrong Signature, Files Corrupt!")||res.equals("Server file doesn't exist!"))){
+	String [] block= res.split("\\|");
 	try{
 	    //generate key from text
 	    byte[] decodedKey = Base64.getDecoder().decode(block[3]); //plain publick
@@ -89,10 +100,12 @@ public class Client{
 	    boolean isValid = sig.verify(BytesSign);
 	    if(!isValid){return "Wrong Signature Sent by the Server!";}
 	    
-	    
 	    //percorre data para o sitio certo
 	    byte[] text= block[1].getBytes();
-	    byte[] aux = new byte[Integer.parseInt(size)];
+	    byte[] aux;
+	    if(Integer.parseInt(pos)>= text.length){return "";}
+	    if(Integer.parseInt(size)> text.length){aux = new byte[text.length];
+	    }else{aux = new byte[Integer.parseInt(size)];}
 	    Arrays.fill( aux, (byte) 0 );
 	    int i=Integer.parseInt(pos);
 	    int j=0;
@@ -109,7 +122,10 @@ public class Client{
 	  }catch(NoSuchAlgorithmException|UnsupportedEncodingException|SignatureException|InvalidKeyException|InvalidKeySpecException e){
 	      System.out.println(e);
 	  }
-	  return "ERROR";
+	  
+	 }else{ return res;} 
+	 
+	 return "ERROR";
    } 
    
    
@@ -132,7 +148,6 @@ public class Client{
 	      //escreve Kpub no ficheiro
 	      String encodedBytesPub = Base64.getEncoder().encodeToString(publicKey.getEncoded());
 	      this.Kpub64=encodedBytesPub;
-	      System.out.println("PUUUUB: "+encodedBytesPub);
 	      FileOutputStream outputStream = new FileOutputStream("Keys.txt", true);
 	      OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
 	      BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
