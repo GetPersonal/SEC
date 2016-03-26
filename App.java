@@ -37,23 +37,34 @@ private static String Id;
 			break;}
 		cmd =input.split("\\(|\\)");
 		if(cmd.length==2){
-			arg =cmd[1].split("\\,");
-			switch (cmd[0]) {			  
-			    case "FS_write":
-				    if(arg.length==3){
-				    c.FS_write(arg[0],arg[1],arg[2]);
-				    }else{System.out.println("Wrong number of arguments, please try again");}
-				    break;					
-			    case "FS_read":
-				    if(arg.length==3){
-				    System.out.println(c.FS_read(arg[0],arg[1], arg[2]));
-				    }else{System.out.println("Wrong number of arguments, please try again");}
-				    break;
-			    default:
-				    System.out.println("Wrong Command, please try again");
-				    break;
-			}
-		}else{System.out.print("Wrong Command, please try again");}
+		    arg =cmd[1].split("\\,");
+		}
+		switch (cmd[0]) {			  
+		    case "FS_write":
+			    if(cmd.length==2){
+				arg =cmd[1].split("\\,");
+				if(arg.length==3){
+				  c.FS_write(arg[0],arg[1],arg[2]);
+				  break;
+			    }}
+			    System.out.println("Wrong number of arguments, please try again");
+			    break;					
+		    case "FS_read":
+			    if(cmd.length==2){
+			      arg =cmd[1].split("\\,");
+			      if(arg.length==3){
+				System.out.println(c.FS_read(arg[0],arg[1], arg[2]));
+				break;
+			     }}
+			     System.out.println("Wrong number of arguments, please try again");
+			     break;
+		    case "FS_list":
+			    System.out.println(c.FS_list());
+			    break;
+		    default:
+			    System.out.println("Wrong Command, please try again");
+			    break;
+		}
 	    
 	  
 	  }
