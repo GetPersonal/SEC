@@ -14,8 +14,53 @@ String userKey;
       this.ss = csocket;
    }
 
+   public String store(String key) {
+      try{
+	  if (new File("Keys.txt").exists() ){
+	    FileReader reader = new FileReader("Keys.txt");
+	    BufferedReader bufferedReader = new BufferedReader(reader);
+	    String line="";
+	    while ((line = bufferedReader.readLine()) != null) { //LÊ O FICHEIRO
+	      if (line.equals(key)){
+		  return "Key was successfully stored!";
+	      }
+	    reader.close();
+	    }
+	  }
+	  FileOutputStream outputStream = new FileOutputStream("Keys.txt", true);
+	  OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
+	  BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
+	  bufferedWriter.write(key+'\n');
+	  bufferedWriter.close();
+	  return "Key was successfully stored!";
+      }catch( IOException e){
+	  System.out.println(e);
+	}
+	return "Error report on storage";
+   }
    
    
+   
+   public String read() {
+	try{
+	  if (new File("Keys.txt").exists() ){
+		FileReader reader = new FileReader("Keys.txt");
+		BufferedReader bufferedReader = new BufferedReader(reader);
+		String line="",lines="";
+		while ((line = bufferedReader.readLine()) != null) { //LÊ O FICHEIRO
+		    lines=lines + line + " " ;
+		}
+		reader.close();
+		return lines;
+	  }else{
+	    return "No keys stored!";
+	  }
+   
+	}catch(IOException e){
+	  System.out.println(e);
+	}
+	return "Error reading keys!";
+  }
 
    
   public String get(String id)throws IOException{
@@ -145,40 +190,49 @@ String userKey;
     
 	
 	    cmd =msg.split("\\(|\\)");
-	    if(cmd.length==2){
 		  switch (cmd[0]) {
 		      case "put_k":
-			      arg=cmd[1].split("\\,");
-			      if(arg.length!=3){
-				      res="Argumentos errados";
-				      break;
-			      }
+			      if(cmd.length==2){
+				arg=cmd[1].split("\\,");
+				if(arg.length!=3){
+					res="Argumentos errados";
+					break;
+			      }}else{res="Argumentos errados";break;}
 			      this.userKey=arg[2];
 			      res=put_k(arg[0], arg[1], arg[2]);
 			      break;
 			      
 		      case "get":
-			      arg=cmd[1].split("\\,");
-			      if(arg.length!=1){
-				      res="Argumentos errados";
-				      break;
-			      }
+			      if(cmd.length==2){
+				arg=cmd[1].split("\\,");
+				if(arg.length!=1){
+					res="Argumentos errados";
+					break;
+			      }}else{res="Argumentos errados";break;}
 			      res=get(cmd[1]);
 			      break;
 			      
 		      case "put_h":
+			      if(cmd.length==2){
 			      arg=cmd[1].split("\\,");
 			      if(arg.length!=1){
 				      res="Argumentos errados";
 				      break;
-			      }
+			      }}else{res="Argumentos errados";break;}
+			      break;
+			      
+		      case "storePubKey":
+			      res=store(cmd[1]);
+			      break;
+			      
+		      case "readPubKeys":
+			      res=read();
 			      break;
 			      
 		      default:
 			      res="Comando errado";
 			      break;
 		  }
-	      }else{ res="Comando errado";}
             
             
             System.out.println("For the client:"+res);

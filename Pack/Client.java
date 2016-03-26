@@ -27,7 +27,24 @@ public class Client{
     public void exit (){
 	this.Sout.println("exit");
 	
-   }           
+   }      
+   
+    public  String FS_list (){
+	
+	this.Sout.println("readPubKeys()");
+	String res= this.Sin.next();
+	if (!(res.equals("No keys stored!") || res.equals("Error reading keys!"))){
+	    String[] lines= res.split("\\s");
+	    res="";
+	    for(int i=0; i<lines.length; i++){
+		res=res + "KEY"+i+": "+lines[i]+'\n';
+	    }
+	}
+	return res;
+	
+    }
+    
+    
    public void FS_write (String pos, String size, String data){
       this.Sout.println("get("+this.Id+")");         //envia
       String res= this.Sin.next();
@@ -159,8 +176,18 @@ public class Client{
 	      md.update(decodedBytes); 
 	      byte[] digest = md.digest();
 	      this.Id = Base64.getEncoder().encodeToString(digest);
+	      
+	      
+	      
+	      ///******************************************/////////////////**********************
+	      this.Sout.println("storePubKey("+encodedBytesPub+")");
+	      return this.Id+ " " + this.Sin.next();
+	      
+	      ///******************************************/////////////////**********************
+	      
+	      
 	      //envia o id ao cliente
-	      return this.Id;
+	      //return this.Id;                  <----
 			      
 			      
       }catch(NoSuchAlgorithmException|IOException e){
