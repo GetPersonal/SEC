@@ -62,7 +62,9 @@ String userKey;
 	return "Error reading keys!";
   }
 
-   
+
+
+//fazer hash do que se recebe   
   public String get(String id)throws IOException{
   
     if (new File("Block.txt").exists() ){      //VÊ SE O FICHEIRO EXISTE
