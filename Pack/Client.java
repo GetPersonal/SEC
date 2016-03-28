@@ -44,6 +44,7 @@ public class Client{
 	
     }
     
+    // Assinar com o cartao
     
    public void FS_write (String pos, String size, String data){
       this.Sout.println("get("+this.Id+")");         //envia
@@ -145,7 +146,8 @@ public class Client{
    } 
    
    
-   
+   // retirar public key/ objecto para pedir para assinar e verificar assinatura
+   // retirar hash
    public String FS_init (){
    
 	try{	
