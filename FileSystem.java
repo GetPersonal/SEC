@@ -99,16 +99,11 @@ public class FileSystem {
 	}
 
 	public String FS_init() throws Exception {
-		Registry reg1 = LocateRegistry.getRegistry(33333);
-		server1 = (IBlockServer) reg1.lookup("BlockServer");
+		Registry reg = LocateRegistry.getRegistry(55555);
+		server1 = (IBlockServer) reg.lookup("BlockServer1");
+		server2 = (IBlockServer) reg.lookup("BlockServer2");
+		server3 = (IBlockServer) reg.lookup("BlockServer3");
 		System.out.println("1 BlockServer found");
-		/*******************************//*******************************/
-		Registry reg2 = LocateRegistry.getRegistry(44444);
-		server2 = (IBlockServer) reg2.lookup("BlockServer");
-		System.out.println("2 BlockServer found");
-		Registry reg3 = LocateRegistry.getRegistry(55555);
-		server3 = (IBlockServer) reg3.lookup("BlockServer");
-		System.out.println("3 BlockServer found");
 		/*******************************//*******************************/
 		SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
 		KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA");
@@ -183,7 +178,7 @@ public class FileSystem {
 				else {
 					endPos = BLOCK_SIZE - 1;
 				}
-				System.arraycopy(contents, startPos + (BLOCK_SIZE * i), block, startPos, endPos - startPos);
+				System.arraycopy(contents,0, block, startPos, endPos - startPos);
 				
 				try {
 					id = server1.put_h(block);
@@ -229,7 +224,7 @@ public class FileSystem {
 					else {
 						endPos = BLOCK_SIZE;
 					}
-					System.arraycopy(contents, startPos + (BLOCK_SIZE * i), block, startPos, endPos - startPos);
+					System.arraycopy(contents, 0, block, startPos, endPos - startPos);
 					
 					try {
 						id = server1.put_h(block);

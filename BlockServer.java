@@ -119,10 +119,18 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 
 	public static void main(String[] args) throws Exception {
 		BlockServer server = new BlockServer();
-		Registry reg = LocateRegistry.createRegistry(Integer.parseInt(args[0]));
+		Registry reg = null;
+		try{
+		  reg = LocateRegistry.createRegistry(55555);
+		 		
+		}catch (Exception e){
+		  System.out.println("Locating registry");
+		   reg= LocateRegistry.getRegistry(55555);
+		}
+
 		
-        System.out.println("BlockServer is ready");
-        reg.rebind("BlockServer", server);
+	System.out.println("BlockServer is ready");
+        reg.rebind("BlockServer" + args[0], server);
 		//LocateRegistry.createRegistry(55555);
 		//Naming.bind("BlockServer", server);
 	}
