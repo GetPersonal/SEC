@@ -17,16 +17,19 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 		PublicKey key;
 		byte[] signature;
 		byte[] block;
-		public KeyBlock(PublicKey key, byte[] sig, byte[] data) {
+		private Integer writeTS;
+		public KeyBlock(PublicKey key, byte[] sig, byte[] data, int wts) {
 			this.key = key;
 			this.signature = sig;
 			this.block = data;
+			this.writeTS = this.writeTS.valueOf(wts);
 		}
 	}
 	private HashMap<String, byte[]> hashBlocks;
 	private HashMap<String, KeyBlock> keyBlocks;
 	private ArrayList<PublicKey> keys;
 	
+		
 	public BlockServer() throws RemoteException {
 		super();
 		hashBlocks = new HashMap<String, byte[]>();
@@ -71,27 +74,34 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 		return null;
 	}
 
-	public String put_k(byte[] data, byte[] signature, PublicKey pubKey) throws Exception {
+	public String put_k(byte wts, byte[] data, byte[] signature, PublicKey pubKey) throws Exception {
 		System.out.println("Recieved key block");
-		Signature sig = Signature.getInstance("SHA256withRSA");
-		sig.initVerify(pubKey);
-		sig.update(data);
-		boolean result = sig.verify(signature);
-
-		if(result) {
-			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-			messageDigest.update(pubKey.toString().getBytes());
-			byte[] digest = messageDigest.digest();
-			String id = DatatypeConverter.printBase64Binary(digest);
-
-			//keyBlocks.put(id, data);
-			KeyBlock block = new KeyBlock(pubKey, signature, data);
+		MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+		messageDigest.update(pubKey.toString().getBytes());
+		byte[] digest = messageDigest.digest();
+		String id = DatatypeConverter.printBase64Binary(digest);
+		
+		KeyBlock blk= keyBlocks.get(id);
+		
+		
+		if(blk!=null){
+			if (wts> blk.writeTS.intValue()){
+						blk.key = pubKey;
+						blk.signature = signature;
+						blk.block = data;
+						blk.writeTS= blk.writeTS.valueOf(wts);
+						
+						System.out.println("Stored key block - ID: " + id);
+						return id;
+					//}
+			}
+		}else{
+			KeyBlock block = new KeyBlock(pubKey, signature, data, wts);
 			keyBlocks.put(id, block);
 			System.out.println("Stored key block - ID: " + id);
-			return id;
+			return id;			
 		}
-		else 
-			return null;
+		return null;
 	}
 
 	public String put_h(byte[] data) throws Exception {

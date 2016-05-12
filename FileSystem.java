@@ -2,12 +2,9 @@ import java.rmi.*;
 import java.rmi.Naming;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
-import java.util.Random;
 import java.security.*;
 import javax.xml.bind.DatatypeConverter;
-import java.util.Arrays;
-import java.util.TreeMap;
-import java.util.ArrayList;
+import java.util.*;
 import java.lang.Integer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,14 +12,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-
-/*import pteidlib.PTEID_Certif;
-import pteidlib.PTEID_ID;
-import pteidlib.PTEID_PIC;
-import pteidlib.PTEID_Pin;
-import pteidlib.PTEID_TokenInfo;
-import pteidlib.PteidException;
-import pteidlib.pteid;*/
 
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -37,7 +26,7 @@ import sun.security.pkcs11.wrapper.PKCS11Constants;
 
 public class FileSystem {
 
-	private IBlockServer server1, server2, server3;
+	private IBlockServer server1, server2, server3, server4;
 
 	private PrivateKey privKey;
 	private PublicKey pubKey;
@@ -45,7 +34,36 @@ public class FileSystem {
 	private TreeMap<Integer, String> idMap;
 	private final static int BLOCK_SIZE = 1000;
 	
+	private Integer writeTS= new Integer(0);
+	private Integer readTS= new Integer(0);
+	private ArrayList<String> ackList= new ArrayList<String>(); 
+	private ArrayList<String> readList= new ArrayList<String>();
+
+	private void initACK(ArrayList<String> array){
+		for(int i=0;i<4;i++){
+			array.add(i,"");
+		}		
+	}
+	
+	private int counterACK(ArrayList<String> array){
+		int result=0;
+		for(int i=0;i<4;i++){
+			if(ackList.get(i).equals("ACK")){
+				result++;
+			}
+		}
+		return result;
+	}
+	
+	
+	
+	
 	private void UpdateKeyBlock() throws Exception {
+		writeTS=writeTS.valueOf(writeTS.intValue()+1);
+		initACK(ackList);
+		//ackList = [false, false, false];
+		
+		
 		ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 		ObjectOutputStream out = new ObjectOutputStream(byteOut);
 		out.writeObject(idMap);
@@ -53,48 +71,56 @@ public class FileSystem {
 		
 		Signature sig = Signature.getInstance("SHA256withRSA");
 		sig.initSign(privKey);
+		
 		sig.update(block);
+		//sig.update(writeTS.byteValue());
+		
 		byte[] signature = sig.sign();
 		
-		/*pteid.Init("");
-		pteid.SetSODChecking(false); // Don't check the integrity of the ID, address and photo (!)
-		
-		System.out.println("Insert auth pin to update key block");
-		PKCS11 pkcs11;
-		String libName = "libpteidpkcs11.so";
-		Class pkcs11Class = Class.forName("sun.security.pkcs11.wrapper.PKCS11");
-		Method getInstanceMethode = pkcs11Class.getDeclaredMethod("getInstance", new Class[] { String.class, String.class, CK_C_INITIALIZE_ARGS.class, boolean.class });
-		pkcs11 = (PKCS11)getInstanceMethode.invoke(null, new Object[] { libName, "C_GetFunctionList", null, false });
-		long p11_session = pkcs11.C_OpenSession(0, PKCS11Constants.CKF_SERIAL_SESSION, null, null);
-		pkcs11.C_Login(p11_session, 1, null);
-		CK_SESSION_INFO info = pkcs11.C_GetSessionInfo(p11_session);
-		CK_ATTRIBUTE[] attributes = new CK_ATTRIBUTE[1];
-		attributes[0] = new CK_ATTRIBUTE();
-		attributes[0].type = PKCS11Constants.CKA_CLASS;
-		attributes[0].pValue = new Long(PKCS11Constants.CKO_PRIVATE_KEY);
-		pkcs11.C_FindObjectsInit(p11_session, attributes);
-		long[] keyHandles = pkcs11.C_FindObjects(p11_session, 5);
-		long signatureKey = keyHandles[0];		//auth key
-		pkcs11.C_FindObjectsFinal(p11_session);
-		CK_MECHANISM mechanism = new CK_MECHANISM();
-		mechanism.mechanism = PKCS11Constants.CKM_SHA1_RSA_PKCS;
-		mechanism.pParameter = null;
-		pkcs11.C_SignInit(p11_session, mechanism, signatureKey);
-		byte[] signature = pkcs11.C_Sign(p11_session, block);
-		
-		pteid.Exit(pteid.PTEID_EXIT_LEAVE_CARD);*/
-		
-		try {
-			myId = server1.put_k(block, signature, pubKey);
+
 			/*******************************//*******************************/
-			myId = server2.put_k(block, signature, pubKey);
-			myId = server3.put_k(block, signature, pubKey);
+			String auxID;
+			try {
+				auxID = server1.put_k(writeTS.byteValue(), block, signature, pubKey);
+			}catch(Exception e) {auxID=null;}
+			if(auxID!=null){ackList.add(0,"ACK");}
+			
+			try {
+				auxID = server2.put_k(writeTS.byteValue(), block, signature, pubKey);
+			}catch(Exception e) {auxID=null;}
+			if(auxID!=null){ackList.add(1,"ACK");}
+			
+			try {
+				auxID = server3.put_k(writeTS.byteValue(), block, signature, pubKey);
+			}catch(Exception e) {auxID=null;}
+			if(auxID!=null){ackList.add(2,"ACK");}
+			
+			if(counterACK(ackList) > (4+1)/2){ //// se 3 estiverem correctos termina
+				auxID = server4.put_k(writeTS.byteValue(), block, signature, pubKey); /////RETIRAAAAAAAAAAAAAAAR
+				myId= auxID;
+				initACK(ackList);
+			}else{
+				try {
+					auxID = server4.put_k(writeTS.byteValue(), block, signature, pubKey);
+				}catch(Exception e) {auxID=null;}
+				if(auxID!=null){ackList.add(3,"ACK");}
+				if(counterACK(ackList) > (4+1)/2){ //// se 3 estiverem correctos em 4 termina
+					myId= auxID;
+					initACK(ackList);
+				}else{
+					myId= null; 					//// não estão suficientes correctos
+				}
+			}
+			
+			
+			
 			/*******************************//*******************************/
-		}
-		catch(Exception e) {
-			System.out.println("Something happened");
-			e.printStackTrace();
-		}
+			
+			
+			
+			
+			
+		
 		
 	}
 
@@ -103,6 +129,7 @@ public class FileSystem {
 		server1 = (IBlockServer) reg.lookup("BlockServer1");
 		server2 = (IBlockServer) reg.lookup("BlockServer2");
 		server3 = (IBlockServer) reg.lookup("BlockServer3");
+		server4 = (IBlockServer) reg.lookup("BlockServer4");
 		System.out.println("1 BlockServer found");
 		/*******************************//*******************************/
 		SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
@@ -112,50 +139,50 @@ public class FileSystem {
 		privKey = pair.getPrivate();
 		pubKey = pair.getPublic();
 		
-		
-		/*System.loadLibrary("pteidlibj");
-		pteid.Init(""); // Initializes the eID Lib
-		pteid.SetSODChecking(false); // Don't check the integrity of the ID, address and photo (!)
-		byte[] certificate_bytes = null;
-		PTEID_Certif[] certs = pteid.GetCertificates();
-		certificate_bytes = certs[0].certif;
-		CertificateFactory f = CertificateFactory.getInstance("X.509");
-		InputStream in = new ByteArrayInputStream(certificate_bytes);
-		X509Certificate cert = (X509Certificate)f.generateCertificate(in);
-		pteid.Exit(pteid.PTEID_EXIT_LEAVE_CARD);
-		
-		pubKey = cert.getPublicKey();*/
-		server1.storePubKey(pubKey);
 		/*******************************//*******************************/
-		server2.storePubKey(pubKey);
-		server3.storePubKey(pubKey);
+		try {
+			server1.storePubKey(pubKey);
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server2.storePubKey(pubKey);
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server3.storePubKey(pubKey);
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server4.storePubKey(pubKey);
+		}catch(Exception e) {System.out.println("Server Down!");}
 		/*******************************//*******************************/
 		
 		idMap = new TreeMap<Integer, String>();
 		
 		UpdateKeyBlock();
 		
-		//idMap.put(0, myId);
 		return myId;
 	}
 	
 	public PublicKey[] FS_List() {
 		PublicKey[] keys = null;
-		try {
-			keys = server1.readPubKeys();
 			/*******************************//*******************************/
-			keys = server2.readPubKeys();
-			keys = server3.readPubKeys();
+			try {
+				keys = server1.readPubKeys();
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				keys = server2.readPubKeys();
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				keys = server3.readPubKeys();
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				keys = server4.readPubKeys();
+			}catch(Exception e) {System.out.println("Server Down!");}
 			/*******************************//*******************************/
-		}
-		catch(Exception e) {
-			System.out.println("Something happened");
-			e.printStackTrace();
-		}
+		
 		return keys;
 	}
 	
 	public void FS_write(int pos, int size, byte[] contents) throws Exception {
+			
 		int index = pos / BLOCK_SIZE;
 		int last = (pos + size) / BLOCK_SIZE;
 		int startPos, endPos;
@@ -180,35 +207,44 @@ public class FileSystem {
 				}
 				System.arraycopy(contents,0, block, startPos, endPos - startPos);
 				
-				try {
-					id = server1.put_h(block);
+				
 					/*******************************//*******************************/
-					id = server2.put_h(block);
-					id = server3.put_h(block);
+					try {
+						id = server1.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server2.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server3.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server4.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
 					/*******************************//*******************************/
 					idMap.put(new Integer(i), id);
-					//UpdateKeyBlock();
-				}
-				catch(Exception e) {
-					System.out.println("Something happened");
-					e.printStackTrace();
-				}
+				
 			}
 			else { //block exists
-				try {
-					block = server1.get(id);
+				
 					/*******************************//*******************************/
-					block = server2.get(id);
-					block = server3.get(id);
+					try {
+						block = server1.get(id);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						block = server2.get(id);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						block = server3.get(id);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						block = server4.get(id);
+					}catch(Exception e) {System.out.println("Server Down!");}
 					/*******************************//*******************************/
-				}
-				catch(Exception e) {
-					System.out.println("Something happened");
-					e.printStackTrace();
-				}
+				
 				
 				if(block == null) {
-					System.out.println("Error: Block mismatch");
+					System.out.println("Error:2 Block mismatch");
 					return;
 				}
 				else {
@@ -226,19 +262,22 @@ public class FileSystem {
 					}
 					System.arraycopy(contents, 0, block, startPos, endPos - startPos);
 					
-					try {
-						id = server1.put_h(block);
 						/*******************************//*******************************/
-						id = server2.put_h(block);
-						id = server3.put_h(block);
+						try {
+							id = server1.put_h(block);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							id = server2.put_h(block);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							id = server3.put_h(block);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							id = server4.put_h(block);
+						}catch(Exception e) {System.out.println("Server Down!");}
 						/*******************************//*******************************/
 						idMap.put(new Integer(i), id);
-						//UpdateKeyBlock();
-					}
-					catch(Exception e) {
-						System.out.println("Something happened");
-						e.printStackTrace();
-					}
+					
 					
 				}
 			}
@@ -248,19 +287,22 @@ public class FileSystem {
 			String id = idMap.get(new Integer(i));
 			if(id.equals(null)) {
 				byte[] block = new byte[BLOCK_SIZE];
-				try {
-					id = server1.put_h(block);
 					/*******************************//*******************************/
-					id = server2.put_h(block);
-					id = server3.put_h(block);
+					try {
+						id = server1.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server2.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server3.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
+					try {
+						id = server4.put_h(block);
+					}catch(Exception e) {System.out.println("Server Down!");}
 					/*******************************//*******************************/
 					idMap.put(new Integer(i), id);
-					//UpdateKeyBlock();
-				}
-				catch(Exception e) {
-					System.out.println("Something happened");
-					e.printStackTrace();
-				}
+				
 			}
 		}
 		
@@ -276,6 +318,11 @@ public class FileSystem {
 	}
 	
 	public int FS_read(PublicKey key, int pos, int size, byte[] contents) throws Exception {
+		
+		readTS=readTS.valueOf(readTS.intValue()+1);
+		initACK(readList);
+
+		
 		int bytesRead = 0;
 		int index = pos / BLOCK_SIZE;
 		int last = (pos + size) / BLOCK_SIZE;
@@ -286,22 +333,25 @@ public class FileSystem {
 		messageDigest.update(key.toString().getBytes());
         byte[] digest = messageDigest.digest();
 		String id = DatatypeConverter.printBase64Binary(digest);
-		
-		try {
-			block = server1.get(id);
+
 			/*******************************//*******************************/
-			block = server2.get(id);
-			block = server3.get(id);
+			try {
+				block = server1.get(id);
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				block = server2.get(id);
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				block = server3.get(id);
+			}catch(Exception e) {System.out.println("Server Down!");}
+			try {
+				block = server4.get(id);
+			}catch(Exception e) {System.out.println("Server Down!");}
 			/*******************************//*******************************/
-		}
-		catch(Exception e) {
-			System.out.println("Something happened");
-			e.printStackTrace();
-			return 0;
-		}
+	
 		
 		if(block == null) {
-			System.out.println("Error: Block mismatch");
+			System.out.println("Error:3 Block mismatch");
 			return 0;
 		}
 		else {
@@ -314,20 +364,25 @@ public class FileSystem {
 				String id2 = map.get(new Integer(i));
 				
 				if(id2 != null) {
-					try {
-						block = server1.get(id2);
+
 						/*******************************//*******************************/
-						block = server2.get(id2);
-						block = server3.get(id2);
+						try {
+							block = server1.get(id2);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							block = server2.get(id2);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							block = server3.get(id2);
+						}catch(Exception e) {System.out.println("Server Down!");}
+						try {
+							block = server4.get(id2);
+						}catch(Exception e) {System.out.println("Server Down!");}
 						/*******************************//*******************************/
-					}
-					catch(Exception e) {
-						System.out.println("Something happened");
-						e.printStackTrace();
-					}
+
 				
 					if(block == null) {
-						System.out.println("Error: Block mismatch");
+						System.out.println("Error:1 Block mismatch");
 						return bytesRead;
 					}
 					else {
