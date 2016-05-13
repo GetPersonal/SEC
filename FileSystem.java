@@ -26,6 +26,16 @@ import sun.security.pkcs11.wrapper.PKCS11Constants;
 
 public class FileSystem {
 
+	private class Read{
+		Integer writeTS ;
+		byte[] block;
+
+		public Read(Integer wts, byte[] b){
+			this.writeTS = wts;
+			this.block = b;
+		}
+	}
+
 	private IBlockServer server1, server2, server3, server4;
 
 	private PrivateKey privKey;
@@ -37,15 +47,23 @@ public class FileSystem {
 	private Integer writeTS= new Integer(0);
 	private Integer readTS= new Integer(0);
 	private ArrayList<String> ackList= new ArrayList<String>(); 
-	private ArrayList<String> readList= new ArrayList<String>();
+	private ArrayList<Read> readList= new ArrayList<Read>();
 
-	private void initACK(ArrayList<String> array){
+	private void initWrites(){
+		ackList.clear();
 		for(int i=0;i<4;i++){
-			array.add(i,"");
+			ackList.add(i,"");
 		}		
 	}
 	
-	private int counterACK(ArrayList<String> array){
+	private void initReads(){
+		readList.clear();
+		for(int i=0;i<4;i++){
+			readList.add(i, (new Read(new Integer(0),null)));
+		}		
+	}
+	
+	private int counterACK(){
 		int result=0;
 		for(int i=0;i<4;i++){
 			if(ackList.get(i).equals("ACK")){
@@ -55,13 +73,43 @@ public class FileSystem {
 		return result;
 	}
 	
+	private int counterReads(){
+		int result=0;
+		for(int i=0;i<4;i++){
+			if(readList.get(i).writeTS.intValue()>0){
+				result++;
+			}	
+		}
+		return result;
+	}
+	
+	private int counterHashReads(){
+		int result=0;
+		for(int i=0;i<4;i++){
+			if(readList.get(i).block != null){
+				result++;
+			}	
+		}
+		return result;
+	}
 	
 	
+	private byte[] getBestRead(){
+		int max=0, aux, index=0 ;
+							
+		for(int i=0; i<4;i++){
+			aux= readList.get(i).writeTS.intValue();
+			if(aux>max){
+				max=aux;
+				index=i;
+			}
+		}
+		return readList.get(index).block;
+	}
 	
 	private void UpdateKeyBlock() throws Exception {
 		writeTS=writeTS.valueOf(writeTS.intValue()+1);
-		initACK(ackList);
-		//ackList = [false, false, false];
+		initWrites();
 		
 		
 		ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -73,7 +121,7 @@ public class FileSystem {
 		sig.initSign(privKey);
 		
 		sig.update(block);
-		//sig.update(writeTS.byteValue());
+		sig.update(writeTS.byteValue());
 		
 		byte[] signature = sig.sign();
 		
@@ -83,35 +131,39 @@ public class FileSystem {
 			try {
 				auxID = server1.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.add(0,"ACK");}
+			if(auxID!=null){ackList.set(0,"ACK");}
 			
 			try {
 				auxID = server2.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.add(1,"ACK");}
+			if(auxID!=null){ackList.set(1,"ACK");}
 			
 			try {
 				auxID = server3.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.add(2,"ACK");}
+			if(auxID!=null){ackList.set(2,"ACK");}
 			
-			if(counterACK(ackList) > (4+1)/2){ //// se 3 estiverem correctos termina
-				auxID = server4.put_k(writeTS.byteValue(), block, signature, pubKey); /////RETIRAAAAAAAAAAAAAAAR
+			
+			if(counterACK() > (4+1)/2){ 
 				myId= auxID;
-				initACK(ackList);
+				initWrites();
+				try {
+				server4.put_k(writeTS.byteValue(), block, signature, pubKey);
+				}catch(Exception e) {auxID=null;}
+			
 			}else{
 				try {
 					auxID = server4.put_k(writeTS.byteValue(), block, signature, pubKey);
 				}catch(Exception e) {auxID=null;}
-				if(auxID!=null){ackList.add(3,"ACK");}
-				if(counterACK(ackList) > (4+1)/2){ //// se 3 estiverem correctos em 4 termina
+				if(auxID!=null){ackList.set(3,"ACK");}
+				
+				if(counterACK() > (4+1)/2){ 
 					myId= auxID;
-					initACK(ackList);
+					initWrites();
 				}else{
-					myId= null; 					//// não estão suficientes correctos
-				}
+					myId= null; 
+				}					
 			}
-			
 			
 			
 			/*******************************//*******************************/
@@ -126,10 +178,18 @@ public class FileSystem {
 
 	public String FS_init() throws Exception {
 		Registry reg = LocateRegistry.getRegistry(55555);
-		server1 = (IBlockServer) reg.lookup("BlockServer1");
-		server2 = (IBlockServer) reg.lookup("BlockServer2");
-		server3 = (IBlockServer) reg.lookup("BlockServer3");
-		server4 = (IBlockServer) reg.lookup("BlockServer4");
+		try {
+			server1 = (IBlockServer) reg.lookup("BlockServer1");
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server2 = (IBlockServer) reg.lookup("BlockServer2");
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server3 = (IBlockServer) reg.lookup("BlockServer3");
+		}catch(Exception e) {System.out.println("Server Down!");}
+		try {
+			server4 = (IBlockServer) reg.lookup("BlockServer4");
+		}catch(Exception e) {System.out.println("Server Down!");}
 		System.out.println("1 BlockServer found");
 		/*******************************//*******************************/
 		SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
@@ -319,7 +379,6 @@ public class FileSystem {
 		}
 		catch(Exception e) {
 			System.out.println("Something happened");
-			e.printStackTrace();
 		}
 		
 		
@@ -328,7 +387,7 @@ public class FileSystem {
 	public int FS_read(PublicKey key, int pos, int size, byte[] contents) throws Exception {
 		
 		readTS=readTS.valueOf(readTS.intValue()+1);
-		initACK(readList);
+		initReads();
 
 		
 		int bytesRead = 0;
@@ -343,27 +402,87 @@ public class FileSystem {
 		String id = DatatypeConverter.printBase64Binary(digest);
 
 			MessageType mt;
+			Signature sig = Signature.getInstance("SHA256withRSA");
+			boolean result;
+			Read readaux;
+			
+			
+			
+			
+			
 			/*******************************//*******************************/
 			try {
 				mt= server1.get(id, readTS);
-				block=mt.getData();
-				//block = server1.get(id);
-			}catch(Exception e) {e.printStackTrace();System.out.println("Server Down!");}
+				if(mt.getRead().intValue() == readTS.intValue() ){
+					sig.initVerify(mt.getKey());
+					sig.update(mt.getData());
+					sig.update(mt.getTS().byteValue());
+					result = sig.verify(mt.getSignature());
+					if(result){
+						readaux= readList.get(0);
+						readaux.writeTS= mt.getTS();
+						readaux.block=mt.getData();
+						readList.set(0,readaux);
+					}
+				}
+			}catch(Exception e) {System.out.println("Server Down!");}
 			try {
 				mt= server2.get(id, readTS);
-				block=mt.getData();
-				//block = server2.get(id);
+				if(mt.getRead().intValue() == readTS.intValue() ){
+					sig.initVerify(mt.getKey());
+					sig.update(mt.getData());
+					sig.update(mt.getTS().byteValue());
+					result = sig.verify(mt.getSignature());
+					if(result){
+						readaux= readList.get(1);
+						readaux.writeTS= mt.getTS();
+						readaux.block=mt.getData();
+						readList.set(1,readaux);
+					}
+				}
 			}catch(Exception e) {System.out.println("Server Down!");}
 			try {
 				mt= server3.get(id, readTS);
-				block=mt.getData();
-				//block = server3.get(id);
+				if(mt.getRead().intValue() == readTS.intValue() ){
+					sig.initVerify(mt.getKey());
+					sig.update(mt.getData());
+					sig.update(mt.getTS().byteValue());
+					result = sig.verify(mt.getSignature());
+					if(result){
+						readaux= readList.get(2);
+						readaux.writeTS= mt.getTS();
+						readaux.block=mt.getData();
+						readList.set(2,readaux);
+					}
+				}
 			}catch(Exception e) {System.out.println("Server Down!");}
+			
+			
 			try {
 				mt= server4.get(id, readTS);
-				block=mt.getData();
-				//block = server4.get(id);
+				if(mt.getRead().intValue() == readTS.intValue() ){
+					sig.initVerify(mt.getKey());
+					sig.update(mt.getData());
+					sig.update(mt.getTS().byteValue());
+					result = sig.verify(mt.getSignature());
+					if(result){
+						readaux= readList.get(3);
+						readaux.writeTS= mt.getTS();
+						readaux.block=mt.getData();
+						readList.set(3,readaux);
+						
+					}
+				}
 			}catch(Exception e) {System.out.println("Server Down!");}
+					
+					
+			if (counterReads()> (4+1)/2){
+				block=getBestRead();                 //check final
+				initReads();
+			}else{
+				System.out.println("Server Down!");
+				block=null;
+			}
 			/*******************************//*******************************/
 	
 		
@@ -381,30 +500,58 @@ public class FileSystem {
 				String id2 = map.get(new Integer(i));
 				
 				if(id2 != null) {
-
+						initReads();
+						readaux= new Read(new Integer(0),null);
 						/*******************************//*******************************/
 						try {
 							mt= server1.get(id2, readTS);
-							block=mt.getData();
-							//block = server1.get(id2);
-						}catch(Exception e) {System.out.println("Server Down!");}
+							if(mt.getRead().intValue() == readTS.intValue() ){
+									readaux= readList.get(0);
+									//readaux.writeTS= mt.getTS();
+									readaux.block=mt.getData();
+									readList.set(0,readaux);
+							}
+						}catch(Exception e) {System.out.println("Serverd Down!");}
 						try {
 							mt= server2.get(id2, readTS);
-							block=mt.getData();
-							//block = server2.get(id2);
-						}catch(Exception e) {System.out.println("Server Down!");}
+							if(mt.getRead().intValue() == readTS.intValue() ){
+								
+									readaux= readList.get(1);
+									//readaux.writeTS= mt.getTS();
+									readaux.block=mt.getData();
+									readList.set(1,readaux);
+							}
+						}catch(Exception e) {System.out.println("Serverd Down!");}
 						try {
 							mt= server3.get(id2, readTS);
-							block=mt.getData();
-							//block = server3.get(id2);
-						}catch(Exception e) {System.out.println("Server Down!");}
+							if(mt.getRead().intValue() == readTS.intValue() ){
+									readaux= readList.get(2);
+									//readaux.writeTS= mt.getTS();
+									readaux.block=mt.getData();
+									readList.set(2,readaux);
+							}
+						}catch(Exception e) {System.out.println("Serverd Down!");}
+						
+						
 						try {
 							mt= server4.get(id2, readTS);
-							block=mt.getData();
-							//block = server4.get(id2);
-						}catch(Exception e) {System.out.println("Server Down!");}
+							if(mt.getRead().intValue() == readTS.intValue() ){
+									readaux= readList.get(3);
+									//readaux.writeTS= mt.getTS();
+									readaux.block=mt.getData();
+									readList.set(3,readaux);
+									
+								
+							}
+						}catch(Exception e) {System.out.println("Serverd Down!");}
+								
 						/*******************************//*******************************/
-
+						if (counterHashReads()> (4+1)/2){
+							block=readaux.block;                 //check final
+							initReads();
+						}else{
+							block=null;
+						}
 				
 					if(block == null) {
 						System.out.println("Error:1 Block mismatch");
