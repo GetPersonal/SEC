@@ -46,14 +46,11 @@ public class FileSystem {
 	
 	private Integer writeTS= new Integer(0);
 	private Integer readTS= new Integer(0);
-	private ArrayList<String> ackList= new ArrayList<String>(); 
+	private HashMap<String, Integer> ackList= new HashMap<String, Integer>(); 
 	private ArrayList<Read> readList= new ArrayList<Read>();
 
 	private void initWrites(){
-		ackList.clear();
-		for(int i=0;i<4;i++){
-			ackList.add(i,"");
-		}		
+		ackList.clear();	
 	}
 	
 	private void initReads(){
@@ -64,13 +61,12 @@ public class FileSystem {
 	}
 	
 	private int counterACK(){
-		int result=0;
-		for(int i=0;i<4;i++){
-			if(ackList.get(i).equals("ACK")){
-				result++;
-			}
+		Integer in = new Integer(0);
+		for(int i=4;i>=0;i--){
+			if(ackList.containsValue(i))
+			    return i;
 		}
-		return result;
+		return 0;
 	}
 	
 	private int counterReads(){
@@ -124,29 +120,46 @@ public class FileSystem {
 		sig.update(writeTS.byteValue());
 		
 		byte[] signature = sig.sign();
-		
+		Integer in = new Integer(0);
 
 			/*******************************//*******************************/
 			String auxID;
 			try {
 				auxID = server1.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.set(0,"ACK");}
+			if(auxID!=null){
+			    if(ackList.containsKey(auxID)){
+				ackList.put(auxID, ackList.get(auxID).intValue()+1);
+				}else{ackList.put(auxID, 1);}
+			}
 			
 			try {
 				auxID = server2.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.set(1,"ACK");}
+			if(auxID!=null){
+			    if(ackList.containsKey(auxID)){
+				ackList.put(auxID, ackList.get(auxID).intValue()+1);
+				}else{ackList.put(auxID, 1);}
+			}
 			
 			try {
 				auxID = server3.put_k(writeTS.byteValue(), block, signature, pubKey);
 			}catch(Exception e) {auxID=null;}
-			if(auxID!=null){ackList.set(2,"ACK");}
+			if(auxID!=null){
+			    if(ackList.containsKey(auxID)){
+				ackList.put(auxID, ackList.get(auxID).intValue()+1);
+				}else{ackList.put(auxID, 1);}
+			}
 			
 			
-			if(counterACK() > (4+1)/2){ 
-				myId= auxID;
-				initWrites();
+			int counter= counterACK();
+			if(counter > (4+1)/2){ 
+			      for(String s : ackList.keySet()){
+				      if (ackList.get(s)== counter)
+					  myId= s;
+			      }
+			
+							initWrites();
 				try {
 				server4.put_k(writeTS.byteValue(), block, signature, pubKey);
 				}catch(Exception e) {auxID=null;}
@@ -155,10 +168,17 @@ public class FileSystem {
 				try {
 					auxID = server4.put_k(writeTS.byteValue(), block, signature, pubKey);
 				}catch(Exception e) {auxID=null;}
-				if(auxID!=null){ackList.set(3,"ACK");}
+				if(auxID!=null){
+				    if(ackList.containsKey(auxID)){
+					ackList.put(auxID, ackList.get(auxID).intValue()+1);
+					}else{ackList.put(auxID, 1);}
+				}
 				
 				if(counterACK() > (4+1)/2){ 
-					myId= auxID;
+					for(String s : ackList.keySet()){
+				      if (ackList.get(s).intValue()== counter)
+					  myId= s;
+			      }
 					initWrites();
 				}else{
 					myId= null; 
@@ -246,6 +266,7 @@ public class FileSystem {
 		int index = pos / BLOCK_SIZE;
 		int last = (pos + size) / BLOCK_SIZE;
 		int startPos, endPos;
+		int pointer = 0;
 		
 		for(int i = index; i <= last; ++i) {
 			byte[] block = null;
@@ -263,10 +284,10 @@ public class FileSystem {
 					endPos = (pos + size) % BLOCK_SIZE;
 				}
 				else {
-					endPos = BLOCK_SIZE - 1;
+					endPos = BLOCK_SIZE;
 				}
-				System.arraycopy(contents,0, block, startPos, endPos - startPos);
-				
+				System.arraycopy(contents, pointer, block, startPos, endPos - startPos);
+				pointer += endPos - startPos;
 				
 					/*******************************//*******************************/
 					try {
@@ -328,8 +349,8 @@ public class FileSystem {
 					else {
 						endPos = BLOCK_SIZE;
 					}
-					System.arraycopy(contents, 0, block, startPos, endPos - startPos);
-					
+					System.arraycopy(contents, pointer, block, startPos, endPos - startPos);
+					pointer += endPos - startPos;
 						/*******************************//*******************************/
 						try {
 							id = server1.put_h(block);
@@ -394,11 +415,12 @@ public class FileSystem {
 		int index = pos / BLOCK_SIZE;
 		int last = (pos + size) / BLOCK_SIZE;
 		int startPos, endPos;
+		int pointer = 0;
 		byte[] block = null;
 		
 		MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 		messageDigest.update(key.toString().getBytes());
-        byte[] digest = messageDigest.digest();
+		byte[] digest = messageDigest.digest();
 		String id = DatatypeConverter.printBase64Binary(digest);
 
 			MessageType mt;
@@ -480,7 +502,6 @@ public class FileSystem {
 				block=getBestRead();                 //check final
 				initReads();
 			}else{
-				System.out.println("Server Down!");
 				block=null;
 			}
 			/*******************************//*******************************/
@@ -570,7 +591,8 @@ public class FileSystem {
 						else {
 							endPos = BLOCK_SIZE;
 						}
-						System.arraycopy(block, startPos, contents, startPos + (BLOCK_SIZE * i), endPos - startPos);
+						System.arraycopy(block, startPos, contents, pointer, endPos - startPos);
+						pointer += endPos - startPos;
 						bytesRead += endPos - startPos;
 					}
 				}

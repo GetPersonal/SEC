@@ -1,0 +1,12 @@
+SEC Project Part 3 Report
+Mário Freitas nº64815
+João Aguiar nº76471
+
+Design
+Our project works with 4 server replicas, accepting only one byzantine fault.
+On storing the public key block the client stores all server answers it receives
+and checks if it has a quorum (N-f) < (N+f)/2
+ 
+
+Optimizations
+There are no optimizations regarding number of replicas for hash blocks.
