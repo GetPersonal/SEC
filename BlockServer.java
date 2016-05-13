@@ -17,7 +17,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 		PublicKey key;
 		byte[] signature;
 		byte[] block;
-		private Integer writeTS;
+		Integer writeTS;
 		public KeyBlock(PublicKey key, byte[] sig, byte[] data, int wts) {
 			this.key = key;
 			this.signature = sig;
@@ -37,7 +37,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 		keys = new ArrayList<PublicKey>();
 	}
 
-	public byte[] get(String id) throws Exception {
+	public MessageType get(String id, Integer rts) throws Exception {
 		if(hashBlocks.containsKey(id)) {
 			byte[] block = hashBlocks.get(id);
 			
@@ -46,10 +46,11 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 			byte[] digest = messageDigest.digest();
 			String blockId = DatatypeConverter.printBase64Binary(digest);
 			
-			if(id.equals(blockId))
-				return block;
-			else
+			if(id.equals(blockId)){
+				return new MessageType(rts, block);
+			}else{
 				return null;
+			}
 		}
 		else {
 			if(keyBlocks.containsKey(id)) {
@@ -61,13 +62,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 				String keyId = DatatypeConverter.printBase64Binary(digest);
 				
 				if(id.equals(keyId)) {
-					Signature sig = Signature.getInstance("SHA256withRSA");
-					sig.initVerify(block.key);
-					sig.update(block.block);
-					boolean result = sig.verify(block.signature);
-					if(result) {
-						return block.block;
-					}
+					return new MessageType(rts, block.key, block.writeTS, block.block, block.signature );
 				}
 			}
 		}

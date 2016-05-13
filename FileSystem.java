@@ -226,19 +226,27 @@ public class FileSystem {
 				
 			}
 			else { //block exists
-				
+					MessageType mt;
 					/*******************************//*******************************/
 					try {
-						block = server1.get(id);
+						mt= server1.get(id, readTS);
+						block=mt.getData();
+						//block = server1.get(id);
 					}catch(Exception e) {System.out.println("Server Down!");}
 					try {
-						block = server2.get(id);
+						mt= server2.get(id, readTS);
+						block=mt.getData();
+						//block = server2.get(id);
 					}catch(Exception e) {System.out.println("Server Down!");}
 					try {
-						block = server3.get(id);
+						mt= server3.get(id, readTS);
+						block=mt.getData();
+						//block = server3.get(id);
 					}catch(Exception e) {System.out.println("Server Down!");}
 					try {
-						block = server4.get(id);
+						mt= server4.get(id, readTS);
+						block=mt.getData();
+						//block = server4.get(id);
 					}catch(Exception e) {System.out.println("Server Down!");}
 					/*******************************//*******************************/
 				
@@ -334,18 +342,27 @@ public class FileSystem {
         byte[] digest = messageDigest.digest();
 		String id = DatatypeConverter.printBase64Binary(digest);
 
+			MessageType mt;
 			/*******************************//*******************************/
 			try {
-				block = server1.get(id);
+				mt= server1.get(id, readTS);
+				block=mt.getData();
+				//block = server1.get(id);
+			}catch(Exception e) {e.printStackTrace();System.out.println("Server Down!");}
+			try {
+				mt= server2.get(id, readTS);
+				block=mt.getData();
+				//block = server2.get(id);
 			}catch(Exception e) {System.out.println("Server Down!");}
 			try {
-				block = server2.get(id);
+				mt= server3.get(id, readTS);
+				block=mt.getData();
+				//block = server3.get(id);
 			}catch(Exception e) {System.out.println("Server Down!");}
 			try {
-				block = server3.get(id);
-			}catch(Exception e) {System.out.println("Server Down!");}
-			try {
-				block = server4.get(id);
+				mt= server4.get(id, readTS);
+				block=mt.getData();
+				//block = server4.get(id);
 			}catch(Exception e) {System.out.println("Server Down!");}
 			/*******************************//*******************************/
 	
@@ -367,16 +384,24 @@ public class FileSystem {
 
 						/*******************************//*******************************/
 						try {
-							block = server1.get(id2);
+							mt= server1.get(id2, readTS);
+							block=mt.getData();
+							//block = server1.get(id2);
 						}catch(Exception e) {System.out.println("Server Down!");}
 						try {
-							block = server2.get(id2);
+							mt= server2.get(id2, readTS);
+							block=mt.getData();
+							//block = server2.get(id2);
 						}catch(Exception e) {System.out.println("Server Down!");}
 						try {
-							block = server3.get(id2);
+							mt= server3.get(id2, readTS);
+							block=mt.getData();
+							//block = server3.get(id2);
 						}catch(Exception e) {System.out.println("Server Down!");}
 						try {
-							block = server4.get(id2);
+							mt= server4.get(id2, readTS);
+							block=mt.getData();
+							//block = server4.get(id2);
 						}catch(Exception e) {System.out.println("Server Down!");}
 						/*******************************//*******************************/
 
